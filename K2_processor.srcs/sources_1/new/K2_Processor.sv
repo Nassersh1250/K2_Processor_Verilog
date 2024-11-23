@@ -4,10 +4,11 @@
 module K2_Processor#(parameter n,N)(
     input clk,R,        // Clock and Reset as inputs
     output [7:0]ins,    // instrucion loaded from the instruction memory
-    output [n-1:0] RA_OUT,RB_OUT,R0_OUT // Registers RA,RB, and R0
+    output [n-1:0] RA_OUT,RB_OUT,R0_OUT, // Registers RA,RB, and R0
+    output  [3:0] counter           //The program counter value
+
     );
 
-    wire [n-1:0] counter;           //The program counter value
     wire J,JC,D1,D0,Sreg,S2,S1,S0;  // The control bits
     wire [3:0] imm;                 // The immediate value from the instruction
     wire cout;                      //The carry from the ALU
@@ -28,6 +29,9 @@ nbitcounter#(.n(n), .N(N)) Program_Counter(
         
         
 // Insruction memory ROM
+// ROM = Fibbonacci program
+// ROM2 = Data memory test program
+// ROM3 = Jump if zero test program
 ROM Instruction_Memory(
         .a(counter),
         .b(ins)
@@ -130,12 +134,28 @@ Dregisterbeha#(.n(1)) CoutDFF(
     .Q(C)
     );
     
+
+// zero = when the output of the ALU = 0
+// zero_flag = after 'zero' is enabled, the Zero register stores it's value
+// JZ = enables the jump if zero only when the J flag is enabled
+    
+wire zero_flag,zero,JZ;
+assign zero = (ALU == 8'b00000000); 
+
+Dregisterbeha#(.n(1)) ZeroDFF(
+    .D(zero),
+    .en(1),
+    .clk(clk),
+    .R(R),
+    .Q(zero_flag)
+    );
     
 // Enables the jump only if either both 
-// carry and jump if carry flag are on OR the jump flag is on AND the Sreg flag is off
+// carry and jump if carry flag are on OR the jump flag is on OR the zero flag is on
+// AND the Sreg flag is off
 assign carry = C&JC;
-assign jump = (carry | J)&(~Sreg);
-
+assign JZ = zero_flag&J;
+assign jump = (JZ | carry | J)&(~Sreg);
     
     
     
